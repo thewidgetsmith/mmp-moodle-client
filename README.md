@@ -122,6 +122,16 @@ colocated `*.test.ts` file that mocks `fetch` and asserts on the request
 shape and response parsing. New resource files are re-exported from the
 nearest `index.ts` barrel so they show up under the `resources` namespace.
 
+## Examples
+
+`examples/browse-vault` is a live proof-of-concept web app showing how a
+consuming codebase uses this package end-to-end: a small backend server
+holds the Moodle token and proxies calls through the client, while a plain
+HTML/CSS/JS browser frontend calls that server's own same-origin API to
+browse courses by interest tag or search text, and open a card's video +
+transcript in a modal. Requires a real Moodle instance and token -- see
+`examples/browse-vault/README.md`.
+
 ## Scripts
 
 | Command                | Description                                          |
