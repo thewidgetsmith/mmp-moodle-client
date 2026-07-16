@@ -1,0 +1,10 @@
+words = [
+    "Moodle",
+    "cjs",
+    "esm",
+    "moodlewsrestformat",
+    "tsup",
+    "webservice",
+    "wsfunction",
+    "wstoken",
+]
