@@ -16,6 +16,7 @@ const modalNoVideo = document.getElementById("modal-no-video");
 const modalSummary = document.getElementById("modal-summary");
 const modalTranscriptWrapper = document.getElementById("modal-transcript-wrapper");
 const modalTranscript = document.getElementById("modal-transcript");
+const modalArticle = document.getElementById("modal-article");
 const modalClose = document.getElementById("modal-close");
 
 form.addEventListener("submit", (event) => {
@@ -105,11 +106,15 @@ async function openModal(card) {
   modalVideoWrapper.hidden = true;
   modalNoVideo.hidden = true;
   modalTranscriptWrapper.hidden = true;
+  modalArticle.hidden = true;
+  modalArticle.innerHTML = "";
   modalVideo.src = "about:blank";
   modal.hidden = false;
 
   try {
-    const response = await fetch(`/api/courses/${card.id}/contents`);
+    const response = await fetch(
+      `/api/courses/${card.id}/contents?contentType=${encodeURIComponent(card.contentType ?? "")}`,
+    );
     const data = await response.json();
 
     if (!response.ok) {
@@ -117,20 +122,41 @@ async function openModal(card) {
       return;
     }
 
-    if (data.videoEmbedUrl) {
-      modalVideo.src = data.videoEmbedUrl;
-      modalVideoWrapper.hidden = false;
+    if (data.type === "article") {
+      renderArticle(data);
     } else {
-      showModalNote("No video available for this card.");
-    }
-
-    if (data.transcriptUrl) {
-      modalTranscript.href = data.transcriptUrl;
-      modalTranscriptWrapper.hidden = false;
+      renderVideo(data);
     }
   } catch (error) {
     showModalNote(`Failed to load content: ${error.message}`);
   }
+}
+
+function renderVideo(data) {
+  if (data.videoEmbedUrl) {
+    modalVideo.src = data.videoEmbedUrl;
+    modalVideoWrapper.hidden = false;
+  } else {
+    showModalNote("No video available for this card.");
+  }
+
+  if (data.transcriptUrl) {
+    modalTranscript.href = data.transcriptUrl;
+    modalTranscriptWrapper.hidden = false;
+  }
+}
+
+function renderArticle(data) {
+  if (!data.html) {
+    showModalNote("No article content available for this card.");
+    return;
+  }
+
+  // Same trust assumption as the course summary: this is WYSIWYG-authored
+  // HTML from Moodle's Page activity, with embedded image URLs already
+  // resolved by Moodle -- safe to render directly.
+  modalArticle.innerHTML = data.html;
+  modalArticle.hidden = false;
 }
 
 function showModalNote(message) {

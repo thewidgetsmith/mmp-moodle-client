@@ -116,6 +116,9 @@ src/
         search-courses.ts       -> core_course_search_courses
       webservice/
         get-site-info.ts -> core_webservice_get_site_info
+    mod/
+      page/
+        get-pages-by-courses.ts -> mod_page_get_pages_by_courses
 ```
 
 `MoodleClient#call` is the single primitive every resource function is

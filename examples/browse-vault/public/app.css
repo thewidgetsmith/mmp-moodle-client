@@ -193,3 +193,25 @@ h1 {
   margin-top: 0.5rem;
   color: #333;
 }
+
+.article-body {
+  margin-top: 1rem;
+  color: #1d1d1f;
+  line-height: 1.6;
+}
+
+.article-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.article-body h1,
+.article-body h2,
+.article-body h3 {
+  line-height: 1.25;
+}
+
+.article-body :first-child {
+  margin-top: 0;
+}

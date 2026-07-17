@@ -35,6 +35,10 @@ if (!MOODLE_BASE_URL || !MOODLE_TOKEN) {
 
 const client = new MoodleClient({ baseUrl: MOODLE_BASE_URL, token: MOODLE_TOKEN });
 
+// Must match the "Course Content Type" custom field option label set on
+// "Quick Read" courses in Moodle -- see examples/browse-vault/README.md.
+const QUICK_READ_CONTENT_TYPE = "Quick Read";
+
 const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -113,13 +117,24 @@ async function handleListCourses(url, res) {
 }
 
 /**
- * GET /api/courses/:id/contents
+ * GET /api/courses/:id/contents?contentType=Video|Quick+Read
  *
- * Proxies `resources.core.course.getContents` -- this is the call that
- * powers a card's modal, matching modules by name (`"Video"`/
- * `"Transcript"`) exactly like the client's own tests do.
+ * Proxies either `resources.core.course.getContents` (for video cards) or
+ * `resources.mod.page.getPagesByCourses` (for "Quick Read" article cards),
+ * depending on the card's `content_type` custom field. The browser already
+ * knows this from the initial `/api/courses` listing, so it's passed
+ * through as a query param rather than re-fetched here. Either way, the
+ * relevant module/page is found by matching its `name` (`"Video"` /
+ * `"Transcript"` / `"Article"`), exactly like the client's own tests do.
  */
-async function handleGetCourseContents(courseId, res) {
+async function handleGetCourseContents(courseId, contentType, res) {
+  if (contentType === QUICK_READ_CONTENT_TYPE) {
+    return handleGetArticleContent(courseId, res);
+  }
+  return handleGetVideoContent(courseId, res);
+}
+
+async function handleGetVideoContent(courseId, res) {
   const sections = await resources.core.course.getContents(client, { courseid: courseId });
   const modules = sections.flatMap((section) => section.modules);
 
@@ -127,8 +142,19 @@ async function handleGetCourseContents(courseId, res) {
   const transcript = modules.find((module) => module.name === "Transcript");
 
   sendJson(res, 200, {
+    type: "video",
     videoEmbedUrl: toVimeoEmbedUrl(video?.contents?.[0]?.fileurl),
     transcriptUrl: transcript?.contents?.[0]?.fileurl ?? null,
+  });
+}
+
+async function handleGetArticleContent(courseId, res) {
+  const { pages } = await resources.mod.page.getPagesByCourses(client, { courseids: [courseId] });
+  const article = pages.find((page) => page.name === "Article");
+
+  sendJson(res, 200, {
+    type: "article",
+    html: article?.content ?? null,
   });
 }
 
@@ -165,7 +191,8 @@ const server = createServer(async (req, res) => {
 
     const contentsMatch = /^\/api\/courses\/(\d+)\/contents$/.exec(url.pathname);
     if (contentsMatch && req.method === "GET") {
-      await handleGetCourseContents(Number(contentsMatch[1]), res);
+      const contentType = url.searchParams.get("contentType");
+      await handleGetCourseContents(Number(contentsMatch[1]), contentType, res);
       return;
     }
 
