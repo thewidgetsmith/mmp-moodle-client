@@ -17,7 +17,7 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { MoodleApiError, MoodleClient, MoodleRequestError, resources } from "mmp-moodle-client";
+import { MoodleAccessDeniedError, MoodleApiError, MoodleClient, MoodleRequestError, resources } from "mmp-moodle-client";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(dirname, "public");
@@ -177,9 +177,16 @@ const server = createServer(async (req, res) => {
     await serveStaticFile(url.pathname, res);
   } catch (error) {
     console.error(error);
-    if (error instanceof MoodleApiError) {
-      // Moodle understood the request but rejected it (bad token, missing
-      // capability, etc) -- surface its errorCode/message to the browser.
+    if (error instanceof MoodleAccessDeniedError) {
+      // The token's external service doesn't allow this specific function --
+      // distinct from other API errors, so it gets its own clearer message.
+      sendJson(res, 502, {
+        error: `This token isn't allowed to call ${error.wsfunction}. Check the token's external service configuration in Moodle.`,
+        errorCode: error.errorCode,
+      });
+    } else if (error instanceof MoodleApiError) {
+      // Moodle understood the request but rejected it for some other reason
+      // (bad token, resource-specific permission, etc).
       sendJson(res, 502, { error: error.message, errorCode: error.errorCode });
     } else if (error instanceof MoodleRequestError) {
       sendJson(res, 502, { error: error.message });

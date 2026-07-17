@@ -77,3 +77,29 @@ export async function getSiteInfo(
     serviceshortnames: params.serviceshortnames,
   });
 }
+
+/**
+ * Checks whether a `getSiteInfo` response indicates the calling token has
+ * access to the given web service function -- a way to check access
+ * *before* attempting a call, as an alternative to catching
+ * {@link MoodleAccessDeniedError} after the fact. Useful for e.g. hiding UI
+ * for features backed by functions the current token can't use.
+ *
+ * Note this only reflects function-level access (is the function part of
+ * one of the token's enabled services); it can't predict resource-level
+ * failures like `nopermissions` for a specific course/context.
+ *
+ * @example
+ * ```ts
+ * const siteInfo = await getSiteInfo(client);
+ * if (!hasFunctionAccess(siteInfo, "core_course_get_contents")) {
+ *   // Skip the call and degrade gracefully instead of hitting a MoodleAccessDeniedError.
+ * }
+ * ```
+ */
+export function hasFunctionAccess(
+  siteInfo: Pick<MoodleSiteInfo, "functions">,
+  wsfunction: string,
+): boolean {
+  return siteInfo.functions.some((fn) => fn.name === wsfunction);
+}

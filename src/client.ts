@@ -1,4 +1,10 @@
-import { isMoodleExceptionPayload, MoodleApiError, MoodleRequestError } from "./errors";
+import {
+  isAccessDeniedPayload,
+  isMoodleExceptionPayload,
+  MoodleAccessDeniedError,
+  MoodleApiError,
+  MoodleRequestError,
+} from "./errors";
 import { buildMoodleParams, type MoodleParamValue } from "./params";
 import type { MoodleClientConfig, MoodleResponseFormat } from "./types";
 
@@ -60,7 +66,10 @@ export class MoodleClient {
    * @param wsfunction - The Moodle web service function name, e.g. `"core_course_get_courses"`.
    * @param params - Parameters for the function. Nested objects/arrays are
    *   flattened using Moodle's bracket notation (see {@link buildMoodleParams}).
-   * @throws {MoodleApiError} If Moodle returns a well-formed exception payload.
+   * @throws {MoodleAccessDeniedError} If Moodle denies access to `wsfunction`
+   *   itself (the token's service doesn't include it, is missing a required
+   *   capability, is IP/time-restricted, etc). A subclass of {@link MoodleApiError}.
+   * @throws {MoodleApiError} If Moodle returns any other well-formed exception payload.
    * @throws {MoodleRequestError} If the request fails, or the response is an
    *   unrecognized non-2xx HTTP status.
    */
@@ -103,6 +112,9 @@ export class MoodleClient {
     const payload: unknown = await response.json();
 
     if (isMoodleExceptionPayload(payload)) {
+      if (isAccessDeniedPayload(payload)) {
+        throw new MoodleAccessDeniedError(payload, wsfunction);
+      }
       throw new MoodleApiError(payload);
     }
 

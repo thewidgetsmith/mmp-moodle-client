@@ -1,7 +1,13 @@
 export { MoodleClient } from "./client";
 export type { MoodleClientConfig, MoodleResponseFormat, MoodleWarning } from "./types";
 
-export { MoodleApiError, MoodleRequestError, isMoodleExceptionPayload } from "./errors";
+export {
+  isAccessDeniedPayload,
+  isMoodleExceptionPayload,
+  MoodleAccessDeniedError,
+  MoodleApiError,
+  MoodleRequestError,
+} from "./errors";
 export type { MoodleExceptionPayload } from "./errors";
 
 export { buildMoodleParams } from "./params";

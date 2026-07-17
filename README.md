@@ -56,15 +56,20 @@ const rawResult = await client.call("core_course_get_courses", {
 ### Error handling
 
 ```ts
-import { MoodleApiError, MoodleRequestError } from "mmp-moodle-client";
+import { MoodleAccessDeniedError, MoodleApiError, MoodleRequestError } from "mmp-moodle-client";
 
 try {
   await resources.core.webservice.getSiteInfo(client);
 } catch (error) {
-  if (error instanceof MoodleApiError) {
-    // Moodle understood the request but rejected it, e.g. invalid token
-    // or missing capability. `errorCode` is Moodle's machine-readable
-    // errorcode (e.g. "invalidtoken").
+  if (error instanceof MoodleAccessDeniedError) {
+    // The token isn't allowed to call this function at all -- not part of
+    // its external service, missing a required capability, IP/time
+    // restricted, etc. `error.wsfunction` names the function that was denied.
+    console.error(`Access denied for ${error.wsfunction}: ${error.message}`);
+  } else if (error instanceof MoodleApiError) {
+    // Moodle understood the request but rejected it for some other reason,
+    // e.g. invalid token or a resource-specific permission failure.
+    // `errorCode` is Moodle's machine-readable errorcode (e.g. "invalidtoken").
     console.error(error.errorCode, error.message);
   } else if (error instanceof MoodleRequestError) {
     // The request itself failed: network error, or an HTTP response that
@@ -73,6 +78,21 @@ try {
   } else {
     throw error;
   }
+}
+```
+
+`MoodleAccessDeniedError` is a subclass of `MoodleApiError` (so existing
+`instanceof MoodleApiError` checks still match it), but lets you handle
+"this function isn't accessible to my token" distinctly and with a clearer
+message than Moodle's own. You can also check access *before* calling a
+function, using `getSiteInfo`'s `functions` list:
+
+```ts
+import { resources } from "mmp-moodle-client";
+
+const siteInfo = await resources.core.webservice.getSiteInfo(client);
+if (!resources.core.webservice.hasFunctionAccess(siteInfo, "core_course_get_contents")) {
+  // Skip the call and degrade gracefully instead of hitting a MoodleAccessDeniedError.
 }
 ```
 

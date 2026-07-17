@@ -1,5 +1,5 @@
 import { MoodleClient } from "./client";
-import { MoodleApiError, MoodleRequestError } from "./errors";
+import { MoodleAccessDeniedError, MoodleApiError, MoodleRequestError } from "./errors";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -114,6 +114,32 @@ describe("MoodleClient#call", () => {
 
     expect(error).toBeInstanceOf(MoodleApiError);
     expect(error).toMatchObject({ errorCode: "invalidtoken" });
+  });
+
+  it("throws MoodleAccessDeniedError when Moodle denies access to the function", async () => {
+    const fetchMock = jest.fn().mockImplementation(() =>
+      Promise.resolve(
+        jsonResponse({
+          exception: "webservice_access_exception",
+          errorcode: "accessexception",
+          message: "Access to the function core_course_get_contents() is not allowed.",
+        }),
+      ),
+    );
+    const client = new MoodleClient({
+      baseUrl: "https://moodle.example.com",
+      token: "abc123",
+      fetch: fetchMock,
+    });
+
+    const error = await client.call("core_course_get_contents").catch((err) => err);
+
+    expect(error).toBeInstanceOf(MoodleAccessDeniedError);
+    expect(error).toBeInstanceOf(MoodleApiError);
+    expect(error).toMatchObject({
+      errorCode: "accessexception",
+      wsfunction: "core_course_get_contents",
+    });
   });
 
   it("throws MoodleRequestError on a non-2xx HTTP response", async () => {

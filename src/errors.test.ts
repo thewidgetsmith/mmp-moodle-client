@@ -1,4 +1,10 @@
-import { isMoodleExceptionPayload, MoodleApiError, MoodleRequestError } from "./errors";
+import {
+  isAccessDeniedPayload,
+  isMoodleExceptionPayload,
+  MoodleAccessDeniedError,
+  MoodleApiError,
+  MoodleRequestError,
+} from "./errors";
 
 describe("MoodleApiError", () => {
   it("exposes the exception payload fields", () => {
@@ -25,6 +31,47 @@ describe("MoodleApiError", () => {
     });
 
     expect(error.debugInfo).toBeUndefined();
+  });
+});
+
+describe("MoodleAccessDeniedError", () => {
+  it("extends MoodleApiError and carries the wsfunction name", () => {
+    const error = new MoodleAccessDeniedError(
+      {
+        exception: "webservice_access_exception",
+        errorcode: "accessexception",
+        message: "Access control exception",
+      },
+      "core_course_get_contents",
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(MoodleApiError);
+    expect(error.name).toBe("MoodleAccessDeniedError");
+    expect(error.errorCode).toBe("accessexception");
+    expect(error.wsfunction).toBe("core_course_get_contents");
+  });
+});
+
+describe("isAccessDeniedPayload", () => {
+  it("returns true for accessexception payloads", () => {
+    expect(
+      isAccessDeniedPayload({
+        exception: "webservice_access_exception",
+        errorcode: "accessexception",
+        message: "Access control exception",
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for other errorcodes", () => {
+    expect(
+      isAccessDeniedPayload({
+        exception: "moodle_exception",
+        errorcode: "invalidtoken",
+        message: "Invalid token",
+      }),
+    ).toBe(false);
   });
 });
 

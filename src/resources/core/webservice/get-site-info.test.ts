@@ -1,5 +1,5 @@
 import { MoodleClient } from "../../../client";
-import { getSiteInfo } from "./get-site-info";
+import { getSiteInfo, hasFunctionAccess } from "./get-site-info";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -54,5 +54,22 @@ describe("getSiteInfo", () => {
     const body = init.body as URLSearchParams;
     expect(body.get("serviceshortnames[0]")).toBe("mobile_app");
     expect(body.get("serviceshortnames[1]")).toBe("custom_service");
+  });
+});
+
+describe("hasFunctionAccess", () => {
+  const siteInfo = {
+    functions: [
+      { name: "core_webservice_get_site_info", version: "4.4" },
+      { name: "core_course_search_courses", version: "4.4" },
+    ],
+  };
+
+  it("returns true when the function is in the site info's functions list", () => {
+    expect(hasFunctionAccess(siteInfo, "core_course_search_courses")).toBe(true);
+  });
+
+  it("returns false when the function is not in the list", () => {
+    expect(hasFunctionAccess(siteInfo, "core_course_get_contents")).toBe(false);
   });
 });
